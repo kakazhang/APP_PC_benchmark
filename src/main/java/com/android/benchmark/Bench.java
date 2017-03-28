@@ -22,6 +22,7 @@ import com.android.ddmlib.IDevice;
 import com.android.sampler.CpuSampler;
 import com.android.sampler.MemorySampler;
 
+import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 
 public class Bench {
@@ -85,6 +86,11 @@ public class Bench {
 
         @Override
         public void deviceConnected(IDevice device) {
+            mProcessList = new ProcessList();
+            mProcessList.listAllProcesses(device);
+
+            int pid = mProcessList.getPid("com.qiyi.video");
+            System.out.println("pid:" + pid);
             startMemorySampler(1000);
         }
 
@@ -99,6 +105,7 @@ public class Bench {
         }
     };
 
+    private static ProcessList mProcessList;
 
     public static void main(String[] args) throws Exception {
         Bench bench = new Bench();
@@ -107,7 +114,6 @@ public class Bench {
 
         bench.bridgeInit();
 
-        Thread.sleep(5000);
         //mBridge.terminate();
     }
 }
