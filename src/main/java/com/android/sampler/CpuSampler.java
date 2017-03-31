@@ -18,6 +18,8 @@ package com.android.sampler;
 import com.android.ddmlib.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CpuSampler extends DeviceSampler {
   /**
@@ -37,10 +39,33 @@ public class CpuSampler extends DeviceSampler {
   private Long previousUserUsage = null;
   private Long previousTotalUptime = null;
 
-  private AndroidDebugBridge mBridge;
-  public CpuSampler(int sampleFrequencyMs, AndroidDebugBridge bridge) {
+  private IDevice mDevice;
+  private static int mSamplePid;
+
+  private List<CpuInfo> mListCpuInfo;
+
+  public static class CpuInfo {
+      public CpuInfo(float kernel, float user) {
+        KernelUsage = kernel;
+        UserUsage = user;
+      }
+
+      public float KernelUsage;
+      public float UserUsage;
+  }
+
+  public List<CpuInfo> getCpuInfo() {
+    List<CpuInfo> info = new ArrayList<>(mListCpuInfo);
+    mListCpuInfo.clear();
+    return info;
+  }
+
+  public CpuSampler(IDevice device, int pid, int sampleFrequencyMs) {
     super(new TimelineData(2, SAMPLES), sampleFrequencyMs);
-    mBridge = bridge;
+    mDevice = device;
+    mSamplePid = pid;
+
+    mListCpuInfo = new ArrayList<CpuInfo>();
   }
 
   @Override
@@ -56,21 +81,16 @@ public class CpuSampler extends DeviceSampler {
 
     int type = TYPE_DATA;
 
-    if (mBridge != null) {
+    if (mDevice != null) {
       try {
-        int pid = 18260;
-        IDevice[] device = mBridge.getDevices();
-        if (device.length == 0)
-          return;
-
-        ProcessStatReceiver dumpsysReceiver = new ProcessStatReceiver(pid);
-        device[0].executeShellCommand("cat " + "/proc/28837/stat", dumpsysReceiver);
+        ProcessStatReceiver dumpsysReceiver = new ProcessStatReceiver(mSamplePid);
+        mDevice.executeShellCommand("cat " + "/proc/" + mSamplePid + "/stat", dumpsysReceiver);
 
         kernelCpuUsage = dumpsysReceiver.getKernelCpuUsage();
         userCpuUsage = dumpsysReceiver.getUserCpuUsage();
 
         SystemStatReceiver systemStatReceiver = new SystemStatReceiver();
-        device[0].executeShellCommand("cat /proc/stat", systemStatReceiver);
+        mDevice.executeShellCommand("cat /proc/stat", systemStatReceiver);
         totalUptime = systemStatReceiver.getTotalUptime();
       }
       catch (TimeoutException e) {
@@ -97,9 +117,11 @@ public class CpuSampler extends DeviceSampler {
           userPercentUsage = Math.max(Math.min(userPercentUsage, 100.0f), 0.0f);
           myTimelineData.add(System.currentTimeMillis(), type, kernelPercentUsage, userPercentUsage);
 
+//          System.out.println("kernelPercentUsage:" + kernelPercentUsage);
+//          System.out.println("userPercentUsage:" + userPercentUsage);
+          CpuInfo info = new CpuInfo(kernelPercentUsage, userPercentUsage);
 
-          System.out.println("kernelPercentUsage:" + kernelPercentUsage);
-          System.out.println("userPercentUsage:" + userPercentUsage);
+          mListCpuInfo.add(info);
         }
       }
       previousKernelUsage = kernelCpuUsage;
@@ -162,6 +184,9 @@ public class CpuSampler extends DeviceSampler {
       if (tokens.length >= 15) {
         // Refer to Linux proc man page for the contents at the specified indices.
         Integer pid = Integer.parseInt(tokens[0]);
+        if (mSamplePid != pid) {
+
+        }
 
         myUserCpuTicks = Long.parseLong(tokens[13]);
         myKernelCpuTicks = Long.parseLong(tokens[14]);

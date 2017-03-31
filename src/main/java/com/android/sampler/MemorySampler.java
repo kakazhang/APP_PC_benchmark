@@ -23,20 +23,22 @@ public class MemorySampler extends DeviceSampler {
     public static final int SAMPLES = 2048;
 
     private final String mPkgName;
-    private AndroidDebugBridge mBridge = null;
     private IDevice mDevice = null;
     private MemoryReceiver mReceiver;
-    public MemorySampler(int sampleFrequencyMs, AndroidDebugBridge bridge, String pkgName) {
-        super(new TimelineData(2, SAMPLES), sampleFrequencyMs);
-        mPkgName = pkgName;
+    private List<MemoryInfo> mListMemory;
 
-        mBridge = bridge;
-        IDevice[] devices = mBridge.getDevices();
-        if (devices.length > 0) {
-            mDevice = devices[0];
-        }
+    public MemorySampler(IDevice device, String pkgName, int sampleFrequencyMs) {
+        super(new TimelineData(2, SAMPLES), sampleFrequencyMs);
+
+        mPkgName = pkgName;
+        mDevice = device;
+        mListMemory = new ArrayList<MemoryInfo>();
 
         mReceiver = new MemoryReceiver();
+    }
+
+    public List<MemoryInfo> getMemoryInfo() {
+        return mListMemory;
     }
 
     @Override
@@ -67,9 +69,11 @@ public class MemorySampler extends DeviceSampler {
         System.out.println("PSS:" + info.total_pss);
         System.out.println("Total_heapsize:" + info.total_heapsize);
         System.out.println("Total_heapalloc:" + info.total_heapalloc);
+
+        mListMemory.add(info);
     }
 
-    private class MemoryInfo {
+    public static class MemoryInfo {
         private Float native_pss = null;
         private Float native_heapsize = null;
         private Float native_heapalloc = null;
@@ -78,9 +82,9 @@ public class MemorySampler extends DeviceSampler {
         private Float dalvik_heapsize = null;
         private Float dalvik_heapalloc = null;
 
-        private Float total_pss = null;
-        private Float total_heapsize = null;
-        private Float total_heapalloc = null;
+        public Float total_pss = null;
+        public Float total_heapsize = null;
+        public Float total_heapalloc = null;
     }
 
     private class MemoryReceiver extends MultiLineReceiver {

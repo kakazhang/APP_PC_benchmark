@@ -46,7 +46,7 @@ public abstract class DeviceSampler implements Runnable {
    * The future representing the task being executed, which will return null upon successful completion.
    * If null, no current task is being executed.
    */
-  protected volatile Future<?> myExecutingTask;
+  //protected volatile Future<?> myExecutingTask;
   protected volatile Client myClient;
   private final Semaphore myDataSemaphore;
   protected volatile boolean myRunning;
@@ -67,7 +67,7 @@ public abstract class DeviceSampler implements Runnable {
 
   @SuppressWarnings("ConstantConditions")
   public void start() {
-    if (myExecutingTask == null /*&& myClient != null*/) {
+    if (!myRunning) {
       myRunning = true;
       myTaskStatus = new CountDownLatch(1);
       mExecutorService.execute(this);
@@ -80,11 +80,13 @@ public abstract class DeviceSampler implements Runnable {
 
   @SuppressWarnings("ConstantConditions")
   public void stop() {
-    if (myExecutingTask != null) {
+    System.out.println("stop sampling");
+    if (myRunning) {
       myRunning = false;
+
       myDataSemaphore.release();
 
-      myExecutingTask.cancel(true);
+      //myExecutingTask.cancel(true);
       try {
         myTaskStatus.await();
       }
@@ -95,7 +97,9 @@ public abstract class DeviceSampler implements Runnable {
       if (myClient != null) {
         myClient.setHeapUpdateEnabled(false);
       }
-      myExecutingTask = null;
+
+      //myExecutingTask = null;
+
       for (TimelineEventListener listener : myListeners) {
         listener.onStop();
       }
@@ -143,20 +147,10 @@ public abstract class DeviceSampler implements Runnable {
   protected void prepareSampler(Client client) {
   }
 
-  /**
-   * This method returns a local copy of <code>myClient</code>, as it is volatile.
-   */
-  public Client getClient() {
-    return myClient;
-  }
-
   public void addListener(TimelineEventListener listener) {
     myListeners.add(listener);
   }
 
-  public boolean isRunning() {
-    return myExecutingTask != null && myRunning;
-  }
 
   protected void forceSample() {
     myDataSemaphore.release();

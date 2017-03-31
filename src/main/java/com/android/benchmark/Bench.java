@@ -19,14 +19,17 @@ package com.android.benchmark;
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.IDevice;
+import com.android.lauchtime.LaunchTime;
+import com.android.lauchtime.MeasureQiyiApp;
 import com.android.sampler.CpuSampler;
 import com.android.sampler.MemorySampler;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public class Bench {
-    private static final int TRY_COUNT = 100;
+    private static final int TRY_COUNT = 10;
     private final static String ADB_PATH = "/home/kakazhang/Android/Sdk/platform-tools/adb";
     private static AndroidDebugBridge mBridge = null;
 
@@ -41,7 +44,7 @@ public class Bench {
         while (!mBridge.hasInitialDeviceList()) {
             try {
                 count++;
-                Thread.sleep(50);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -60,22 +63,11 @@ public class Bench {
         /*init android debug bridge with client support*/
         AndroidDebugBridge.init(true);
 
-        mBridge = AndroidDebugBridge.createBridge(ADB_PATH, false);
+        mBridge = AndroidDebugBridge.createBridge(ADB_PATH, true);
         if (!waiDeviceList()) {
             System.out.println("connect to adb failed");
             System.exit(-1);
         }
-    }
-
-
-    private static void startCpuSampler(int timeout) {
-        CpuSampler sampler = new CpuSampler(1000, mBridge);
-        sampler.start();
-    }
-
-    private static void startMemorySampler(int timeout) {
-        MemorySampler sampler = new MemorySampler(timeout, mBridge, "com.qiyi.video");
-        sampler.start();
     }
 
     private static AndroidDebugBridge.IDeviceChangeListener mDeviceChangeListener = new AndroidDebugBridge.IDeviceChangeListener() {
@@ -86,12 +78,13 @@ public class Bench {
 
         @Override
         public void deviceConnected(IDevice device) {
-            mProcessList = new ProcessList();
-            mProcessList.listAllProcesses(device);
-
-            int pid = mProcessList.getPid("com.qiyi.video");
-            System.out.println("pid:" + pid);
-            startMemorySampler(1000);
+//            mProcessList = new ProcessList();
+//            mProcessList.listAllProcesses(device);
+//
+//            int pid = mProcessList.getPid("com.qiyi.video");
+//            System.out.println("pid:" + pid);
+//            startMemorySampler(1000);
+            startBenchLaunchTime(device);
         }
 
         @Override
@@ -105,7 +98,32 @@ public class Bench {
         }
     };
 
-    private static ProcessList mProcessList;
+    private final static String START_TAG = "Starting: Intent";
+
+    private static void startBenchLaunchTime(IDevice device) {
+        List<MeasureQiyiApp.MeasureParams> params = new ArrayList<MeasureQiyiApp.MeasureParams>();
+
+        /*constrcut boot cmd*/
+        MeasureQiyiApp.MeasureParams param = new MeasureQiyiApp.MeasureParams();
+        param.timeout = 10 * 1000;
+        param.cmpName = "com.qiyi.video/.WelcomeActivity";
+        param.filterName = "logcat -c && logcat -v time | grep -E \"Displayed | ad_image_url\"";
+        param.startTag = START_TAG;
+        param.endTag = "MainActivity";
+        param.repeatTime = 1;
+
+        /*construct player activity start cmd:default half screen*/
+        MeasureQiyiApp.MeasureParams halfscreen = new MeasureQiyiApp.MeasureParams();
+        halfscreen.cmpName = "am start -W -a android.intent.action.VIEW -d \"iqiyi://mobile/player?aid=204218901\"";
+        halfscreen.endTag = "TotalTime";
+        halfscreen.timeout = 10 * 1000;
+        halfscreen.repeatTime = 1;
+
+        params.add(param);
+        params.add(halfscreen);
+
+        new Thread(new MeasureQiyiApp(device, params)).start();
+    }
 
     public static void main(String[] args) throws Exception {
         Bench bench = new Bench();
