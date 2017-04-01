@@ -17,16 +17,11 @@
 package com.android.benchmark;
 
 import com.android.ddmlib.AndroidDebugBridge;
-import com.android.ddmlib.Client;
 import com.android.ddmlib.IDevice;
-import com.android.lauchtime.LaunchTime;
 import com.android.lauchtime.MeasureQiyiApp;
-import com.android.sampler.CpuSampler;
-import com.android.sampler.MemorySampler;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 
 public class Bench {
     private static final int TRY_COUNT = 10;
@@ -61,7 +56,7 @@ public class Bench {
 
     private void bridgeInit() {
         /*init android debug bridge with client support*/
-        AndroidDebugBridge.init(true);
+        AndroidDebugBridge.init(false);
 
         mBridge = AndroidDebugBridge.createBridge(ADB_PATH, true);
         if (!waiDeviceList()) {
@@ -78,12 +73,6 @@ public class Bench {
 
         @Override
         public void deviceConnected(IDevice device) {
-//            mProcessList = new ProcessList();
-//            mProcessList.listAllProcesses(device);
-//
-//            int pid = mProcessList.getPid("com.qiyi.video");
-//            System.out.println("pid:" + pid);
-//            startMemorySampler(1000);
             startBenchLaunchTime(device);
         }
 

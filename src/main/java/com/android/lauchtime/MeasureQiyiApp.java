@@ -72,6 +72,30 @@ public class MeasureQiyiApp extends MeasureAppInfo {
 
         /*second, full screen information*/
         measurePlayerInfo(mDevice, true);
+
+        MeasureDownload(5 * 60 * 1000);
+    }
+
+    private void MeasureDownload(int timeout) {
+        final String className = "tutorial.ua.com.automation.AndroidTester";
+        final String cmp = "tutorial.ua.com.automation.test/android.support.test.runner.AndroidJUnitRunner";
+        StringBuilder builder = new StringBuilder("am instrument -w -r -e debug false -e class");
+        builder.append(" " + className);
+        builder.append(" " + cmp);
+
+        System.out.println("start download");
+
+        try {
+            mDevice.executeShellCommand(builder.toString(), mNullReceiver, timeout);
+        } catch (TimeoutException e) {
+            e.printStackTrace();
+        } catch (AdbCommandRejectedException e) {
+            e.printStackTrace();
+        } catch (ShellCommandUnresponsiveException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void showSeperateLine() {
@@ -86,7 +110,7 @@ public class MeasureQiyiApp extends MeasureAppInfo {
 
         sendToPlayerCmd(fullScreen);
 
-        doSnap(10*1000);
+        doSnap(5*1000);
         mProcessList.listAllProcesses(device);
         int pid = mProcessList.getPid("com.qiyi.video");
 
@@ -96,7 +120,7 @@ public class MeasureQiyiApp extends MeasureAppInfo {
         cpuSampler.start();
         memSampler.start();
 
-        doSnap(30 * 1000);
+        doSnap(5 * 1000);
         cpuSampler.stop();
         memSampler.stop();
 
@@ -112,7 +136,7 @@ public class MeasureQiyiApp extends MeasureAppInfo {
         System.out.println("Memory information:");
 
         for (MemorySampler.MemoryInfo mem: memInfo) {
-            System.out.println("" + mem.total_heapsize + " " + mem.total_heapalloc);
+            System.out.println(mem.total_pss);
         }
     }
 
